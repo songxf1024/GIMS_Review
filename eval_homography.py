@@ -106,9 +106,9 @@ def draw_matches(img1, img2, matched_points1, matched_points2):
 
 def GIMS(dgims=False):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_homography', type=str, default='assets/coco_test_images_homo.txt')
+    parser.add_argument('--input_homography', type=str, default='./assets/coco_test_images_homo.txt')
     parser.add_argument('--input_dir', type=str, default='./assets/coco_test_images/')
-    parser.add_argument('--output_dir', type=str, default='./dump/dump_homo_pairs')
+    parser.add_argument('--output_dir', type=str, default='./output/dump/dump_homo_pairs')
     parser.add_argument('--max_length', type=int, default=-1)
     parser.add_argument('--resize', type=int, nargs='+', default=[800, 600])
     parser.add_argument('--resize_float', action='store_true')
@@ -123,7 +123,7 @@ def GIMS(dgims=False):
     parser.add_argument("--agc_p", type=int, default=2, help="percentile")
     parser.add_argument("--agc_m", type=str, default=7, help="min_size")
     args = parser.parse_args()
-    os.makedirs('./dump', exist_ok=True)
+    os.makedirs('./output/dump/', exist_ok=True)
     args.output_dir = args.output_dir + '_' + args.name
     print(args)
 

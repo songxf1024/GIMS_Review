@@ -59,8 +59,8 @@ def random_generate(cnt=1):
 
 
 if __name__ == '__main__':
-    # move()
-    # process()
-    random_generate(cnt=100)
+    move()
+    process()
+    # random_generate(cnt=100)
 
 

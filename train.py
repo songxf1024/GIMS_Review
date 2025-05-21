@@ -215,7 +215,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend", type=str, default='nccl')
     parser.add_argument("--gpus", type=str, default='2')
     parser.add_argument("--name", type=str, default='gims')
-    parser.add_argument("--limit", type=int, default=-1, help='训练数据集的数量')
+    parser.add_argument("--limit", type=int, default=-1)
     args = parser.parse_args()
     for i in range(torch.cuda.device_count()): print(i, "=>", torch.cuda.get_device_name(i))
     args.nprocs = len(args.gpus.split(','))
@@ -229,7 +229,4 @@ if __name__ == "__main__":
 
     # train(config, args, -1, torch.device('cuda', int(args.gpus), False)
     torch.multiprocessing.spawn(process_wrapper, args=(config, args, train), nprocs=args.nprocs)
-
-
-# python train.py --gpus="0" --limit=-1 --name=gims
 
