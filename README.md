@@ -5,7 +5,7 @@
 
 ## Directory Structure
 Below is a brief overview of the directory structure and the role of each component:
-```
+```bash
 gims/                     # Source code for GIMS framework
 ├── assets/               # Example images for demo and visualization
 ├── carhynet/             # CAR-HyNet descriptor implementation
@@ -60,7 +60,7 @@ Running the following command to start training the model.
 python train.py --gpus="0" --limit=-1 --name=gims
 ```
 The output in the console will be like:
-```
+```bash
 GPU 0: NVIDIA GeForce RTX 3090
 ==> CAR-HyNet successfully loaded pre-trained network.
 Optimizer groups: 139 .bias, 120 conv.weight, 23 other
@@ -79,7 +79,7 @@ Epoch   gpu_mem   Iteration   PosLoss   NegLoss   TotLoss     Dtime     Ptime   
 
 ### Training Arguments
 Core training arguments are listed below:
-```
+```bash
 --config_path: the path of config.yaml
 --backend: the backend of communication, use NCCL
 --gpus: the ids of GPUs, e.g., '0' means one GPU, '0,2' means two GPUs
@@ -103,7 +103,7 @@ python eval_homography.py
 The results will be saved in `output/dump/`. Please refer to `eval_homography.py` for more details.
 
 The output in the console will be like:
-```
+```bash
 resize to 800x600 (WxH)
 ==> CAR-HyNet successfully loaded pre-trained network.
 Running inference on device "cuda:0"
@@ -136,7 +136,7 @@ python eval_matches.py
 The results will be saved in `output/match/`. Please refer to `eval_matches.py` for more details.
 
 The output in the console will be like:
-```
+```bash
 GPU Warmup...: 100%|████████████████████████████| 50/50 [00:00<00:00, 50.26it/s]
 NVIDIA GeForce RTX 3090
 ==> CAR-HyNet successfully loaded pre-trained network.
