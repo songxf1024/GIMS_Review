@@ -38,18 +38,18 @@ class COCO_loader(Dataset):
         return result1['image'], result2['image']
 
     def __getitem__(self, index: int):
-        """从数据集中获取图像数据、对图像进行预处理和数据增强，并返回处理后的图像数据和对应的单应性矩阵"""
+        """Obtain image data from the dataset, preprocess and data enhancement, and return the processed image data and the corresponding homography matrix"""
         resize = True  # self.config['resize_aspect']
         img_id = self.images[index]
         file_name = self.coco_json.loadImgs(ids=[img_id])[0]['file_name']
         file_path = os.path.join(self.images_path, file_name)
         image = cv2.imread(file_path, cv2.IMREAD_COLOR if self.color else cv2.IMREAD_GRAYSCALE)
-        # 读取图像
+        # Read the image
         if self.aspect_resize:
             image = resize_aspect_ratio(image, self.config['image_height'], self.config['image_width'])
             resize = False
         height, width = image.shape[0:2]
-        # 根据参数获取透视变换矩阵
+        # Obtain perspective transformation matrix according to parameters
         homo_matrix = get_perspective_mat(self.aug_params['patch_ratio'], width//2, height//2, self.aug_params['perspective_x'], self.aug_params['perspective_y'], self.aug_params['shear_ratio'], self.aug_params['shear_angle'], self.aug_params['rotation_angle'], self.aug_params['scale'], self.aug_params['translation'])
         warped_image = cv2.warpPerspective(image.copy(), homo_matrix, (width, height))
         if resize:
