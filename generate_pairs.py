@@ -21,7 +21,7 @@ def move(total_num=500):
     selected_files = files if len(files) < total_num else random.sample(files, total_num)
     for file in tqdm(selected_files):
         shutil.copy(os.path.join(source_folder, file), os.path.join(target_folder, file))
-    print("文件复制完成。")
+    print("file copy complete.")
 
 
 def process():
