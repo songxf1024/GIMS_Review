@@ -34,19 +34,19 @@ def get_translation_mat(image_height, image_width, trans, transformed_corners):
     return translate_mat
 
 def get_perspective_mat(patch_ratio, center_x, center_y, pers_x, pers_y, shear_ratio, shear_angle, rotation_angle, scale, trans):
-    # 将输入的参数转换为弧度制
+    # Convert the input parameters to radians
     shear_angle, rotation_angle = np.deg2rad(shear_angle), np.deg2rad(rotation_angle)
-    # 计算图像的高度和宽度
+    # Calculate the height and width of the image
     image_height, image_width = center_y * 2, center_x * 2
-    # 根据给定的比例计算出patch的边界
+    # Calculate the boundary of the patch based on the given ratio
     patch_bound_w, patch_bound_h = int(patch_ratio * image_width), int(patch_ratio * image_height)
-    # 创建patch的四个角点坐标
+    # Create four corner coordinates of patch
     patch_corners = np.array([[0,0], [0, patch_bound_h], [patch_bound_w, patch_bound_h], [patch_bound_w, 0]]).astype(np.float32)
-    # 随机生成透视矩阵的x和y方向的值
+    # Randomly generate values ​​in the x and y directions of the perspective matrix
     pers_value_x = np.random.normal(0, pers_x/2)
     pers_value_y = np.random.normal(0, pers_y/2)
     pers_matrix = np.array([[1, 0, 0], [0, 1, 0], [pers_value_x, pers_value_y, 1]])
-    # 根据给定的shear_ratio值和随机数生成shear矩阵
+    # Generate shear matrix based on the given shear_ratio value and random number
     # shear_ratio is given by shear_x/shear_y
     if np.random.uniform() > 0.5:
         shear_ratio_value = np.random.uniform(1, 1+shear_ratio)
@@ -57,17 +57,17 @@ def get_perspective_mat(patch_ratio, center_x, center_y, pers_x, pers_y, shear_r
     shear_angle_value = np.random.uniform(-shear_angle, shear_angle)
     shear_matrix = get_rotmat(-shear_angle_value, as_3d=True, center_x=center_x, center_y=center_y) @ np.diag([shear_x, shear_y, 1]) @ get_rotmat(shear_angle_value, as_3d=True, center_x=center_x, center_y=center_y)
     shear_perspective = shear_matrix @ pers_matrix
-    # 随机生成旋转角度和缩放比例
+    # Randomly generate rotation angle and scaling
     rotation_angle_value = np.random.uniform(-rotation_angle, rotation_angle)
     scale_value = np.random.uniform(1, 1+(2*scale))
     # priotrising scaling up compared to scaling down
     scaled_rotation_matrix = get_rotmat(rotation_angle_value, as_3d=True, scale=scale_value, center_x=center_x, center_y=center_y)
-    # 计算出最终的homography矩阵
+    # Calculate the final homography matrix
     homography_matrix = scaled_rotation_matrix @ shear_perspective
-    # 将patch的角点坐标通过透视变换和平移操作转换到新的位置
+    # Transform the corner coordinates of patch to a new position through perspective transformation and translation operations
     trans_patch_corners = cv2.perspectiveTransform(np.reshape(patch_corners, (-1, 1, 2)), homography_matrix).squeeze(1)
     translation_matrix = get_translation_mat(image_height, image_width, trans, trans_patch_corners)
-    # 最终返回homography矩阵
+    # Finally return to the homography matrix
     homography_matrix = translation_matrix @ homography_matrix
     return homography_matrix
 
@@ -84,32 +84,32 @@ def torch_setdiff1d(miss_index, match_index):
     return diff
 
 def warp_keypoints(keypoints, homography_mat):
-    """将关键点根据给定的单应性矩阵进行变换"""
-    # 将关键点和一个全为1的列向量拼接成一个矩阵
+    """Transform key points based on the given homography matrix"""
+    # Stitch key points and a column vector with all 1 into a matrix
     source = torch.cat([keypoints, torch.ones(len(keypoints), 1).to(keypoints.device)], dim=-1)
-    # 通过矩阵乘法计算变换后的目标点
+    # Calculate the transformed target point by matrix multiplication
     dest = (homography_mat @ source.T).T
-    # 对dest进行归一化处理，即将dest除以第三列的值
+    # Normalize the dest, that is, divide the dest by the value of the third column
     # dest /= dest[:, 2:3]
-    dest = dest / dest[:, 2:3]  # 使用非就地操作进行更新
-    # 返回处理后的目标点的前两列
+    dest = dest / dest[:, 2:3]  # Update with non-in-place operations
+    # Returns the first two columns of the processed target point
     return dest[:, :2]
 
 def torch_find_matches(src_keypoints1, src_keypoints2, homography, dist_thresh=3, n_iters=1):
     '''
-    在两组关键点之间找到匹配的关键点对。首先，将第一组关键点投影到第二组关键点的空间中以便比较。
-    然后，通过计算两组关键点之间的距离，找到最接近的关键点对。最后，根据距离阈值和迭代次数，筛
-    选出匹配的关键点对，并返回匹配的关键点对以及未匹配的关键点索引。
+    Find a matching key point pair between the two sets of key points. First, the first set of key points are projected into the space of the second set of key points for comparison. 
+    Then, by calculating the distance between the two sets of key points, the closest pair of key points is found. 
+    Finally, based on the distance threshold and the number of iterations, the matching key point pairs are filtered and the matching key point pairs and the unmatched key point index are returned.
     '''
-    # 初始化一些变量和空的匹配列表。
+    # Initialize some variables and empty matching list.
     match_list_1, match_list_2 = torch.empty(0, dtype=torch.int64, device=src_keypoints1.device), torch.empty(0, dtype=torch.int64, device=src_keypoints2.device)
-    # 创建包含所有索引的列表，用于跟踪未匹配的关键点。
+    # Create a list with all indexes to track unmatched key points.
     missing_indices_1 = torch.arange(len(src_keypoints1), device=src_keypoints1.device, dtype=torch.long)
     missing_indices_2 = torch.arange(len(src_keypoints2), device=src_keypoints2.device, dtype=torch.long)
-    # 将第一组关键点投影到第二组关键点的空间中。
+    # Project the first set of key points into the space of the second set of key points.
     src_keypoints1_projected = warp_keypoints(src_keypoints1, homography) #keypoint1 must be projected to keypoint2 space for comparsion
-    # 对于每次迭代，找到最接近的关键点对，并根据距离阈值筛选出匹配的关键点对。
-    for i in range(n_iters): # 第二次迭代在大多数情况下只能恢复 1 或 2 个匹配的关键点。所以 1 个就足够了。
+    # For each iteration, find the closest keypoint pair and filter out the matching keypoint pair based on the distance threshold.
+    for i in range(n_iters): # The second iteration can only recover 1 or 2 matching key points in most cases. So 1 is enough.
         keypoints1 = src_keypoints1_projected[missing_indices_1, :]
         keypoints2 = src_keypoints2[missing_indices_2, :]
         distance = torch_cdist(keypoints1, keypoints2)
@@ -128,7 +128,7 @@ def torch_find_matches(src_keypoints1, src_keypoints2, homography, dist_thresh=3
         missing_indices_2 = torch_setdiff1d(missing_indices_2, matched_indexes_2)
         match_list_1 = torch.cat((match_list_1, matched_indexes_1))
         match_list_2 = torch.cat((match_list_2, matched_indexes_2))
-    # 返回匹配的关键点对和未匹配的关键点索引。
+    # Returns the matching key pair and unmatched key point index.
     return match_list_1, match_list_2, missing_indices_1, missing_indices_2
 
 def scale_homography(homo_matrix, src_height, src_width, dest_height, dest_width):
@@ -154,21 +154,21 @@ def scale_homography(homo_matrix, src_height, src_width, dest_height, dest_width
 #     return template
 
 def resize_aspect_ratio(image, resize_h, resize_w):
-    # 获取图像的高度、宽度和通道数（如果是灰度图，则默认通道数为1）
+    # Get the image's height, width, and number of channels (if it is a grayscale graph, the default number of channels is 1)
     h, w = image.shape[:2]
     channels = 1 if image.ndim == 2 else image.shape[2]
-    # 计算调整后的图像尺寸，保持原始宽高比
+    # Calculate the adjusted image size to maintain the original aspect ratio
     max_size = max(h, w)
     ratio_h, ratio_w = h / max_size, w / max_size
     new_height, new_width = int(resize_h * ratio_h), int(resize_w * ratio_w)
-    # 调整图像尺寸
+    # Adjust image size
     resized = cv2.resize(image, (new_width, new_height))
-    # 根据通道数创建填充模板
+    # Create fill templates based on the number of channels
     if channels == 1:
         template = np.ones((resize_h, resize_w), dtype=np.uint8) * np.random.randint(0, 127)
     else:
         template = np.ones((resize_h, resize_w, channels), dtype=np.uint8) * np.random.randint(0, 127)
-    # 将调整后的图像放置在模板中心
+    # Place the adjusted image in the center of the template
     start_h, start_w = (resize_h - new_height) // 2, (resize_w - new_width) // 2
     template[start_h:start_h + new_height, start_w:start_w + new_width] = resized
 
