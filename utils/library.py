@@ -15,7 +15,7 @@ MaxSameKP_angle = 10  # degrees
 
 def unpackSIFTOctave(kp, XI=False):
     ''' Opencv packs the true octave, scale and layer inside kp.octave.
-    这个函数计算信息的解包
+    This function calculates the depacket of information
     '''
     _octave = kp.octave
     octave = _octave & 0xFF
@@ -63,7 +63,7 @@ def dist_pt_to_line(p, p1, p2):
 
 
 def ComposeAffineMaps(A_lhs, A_rhs):
-    ''' 计算仿射映射的组成:
+    ''' Compute the composition of affine map:
         A = A_lhs ∘ A_rhs
     '''
     A = np.matmul(A_lhs[0:2, 0:2], A_rhs)
@@ -110,11 +110,11 @@ def ComputePatches(kp_list, gpyr, radius_size=32):
     return patches
 
 def ComputePatches2(kp_list, gpyr, radius_size=32):
-    ''' 计算与kp_list中每个关键点相关联的patch
+    ''' Compute patches associated with each key point in kp_list
         Returns:
         img_list - list of patches.
-        A_list - 仿射映射列表A，A(BackgroundImage)*1_{[0,2r]x[0,2r]} = patch  
-        Ai_list - 上面的仿射映射的逆表
+        A_list - Affine Mapping List A，A(BackgroundImage)*1_{[0,2r]x[0,2r]} = patch  
+        Ai_list - The inverse table of affine map above
     '''
     img_list = []
     img_raw_list = []
@@ -130,7 +130,7 @@ def ComputePatches2(kp_list, gpyr, radius_size=32):
         octave, layer, scale = unpackSIFTOctave(kpt)
         assert octave >= firstOctave and layer <= nOctaveLayers + 2, 'octave = ' + str(
             octave) + ', layer = ' + str(layer)
-        # opencv中的公式: kpt.size = sigma*powf(2. f, (layer + xi) / nOctaveLayers)*(1 << octv)*2
+        # Formulas in opencv: kpt.size = sigma*powf(2. f, (layer + xi) / nOctaveLayers)*(1 << octv)*2
         step = kpt.size * scale * 0.5  # sigma*powf(2.f, (layer + xi) / nOctaveLayers)
         ptf = np.array(kpt.pt) * scale  #
         angle = 360.0 - kpt.angle
@@ -173,7 +173,7 @@ def ComputeOnePatch(pt, size, angle, scale, img, radius_size=32):
     flt_epsilon = 1.19209e-07
     new_radius_descr = (radius_size-1)/2  # 15.5  # 29.5
 
-    # opencv中的公式: kpt.size = sigma*powf(2. f, (layer + xi) / nOctaveLayers)*(1 << octv)*2
+    # Formulas in opencv: kpt.size = sigma*powf(2. f, (layer + xi) / nOctaveLayers)*(1 << octv)*2
     step = size * scale * 0.5  # sigma*powf(2.f, (layer + xi) / nOctaveLayers)
     ptf = np.array(pt) * scale  #
     angle = 360.0 - angle
@@ -195,13 +195,13 @@ def ComputeOnePatch(pt, size, angle, scale, img, radius_size=32):
 
 def packSIFTAndBlur(src, x, y, deg, scale):
     """
-    pt：关键点的位置
-    size：关键点的范围
-    angle：关键点角度
-    response：能够给某个关键点更强烈响应的检测器，有时能够被理解为特性实际存在的概率
-    octave：标示了关键点被找到的层级，总是希望在相同的层级找到对应的关键点
-    class_id：标示关键点来自于哪一个目标
-
+    pt: the position of the key point 
+    size: the range of the key point 
+    angle: the angle of the key point
+    response: the detector that can give a key point a stronger response can sometimes be understood as the probability of the actual existence of the feature 
+    octave: It indicates the level where the key point is found, and it is always hoped to find the corresponding key point at the same level 
+    class_id: It indicates which target the key point comes from.
+    
     interest.txt: image_ID，x，y， orientation， scale (log2 units)
     """
     img = cv2.GaussianBlur(src, (0, 0), scale)
