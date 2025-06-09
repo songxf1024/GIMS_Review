@@ -696,12 +696,12 @@ def desc_l2norm(desc):
     return temp.cpu().numpy()
 
 def rootSIFT(descs, eps=1e-7, l2norm=False):
-    # 应用Hellinger核进行l1归一化
+    # Use the Hellinger kernel for l1 normalization
     descs /= (descs.sum(axis=1, keepdims=True) + eps)
-    # 对每一个元素求平方根
+    # Find the square root for each element
     descs = np.sqrt(descs)
-    # 是否进行l2归一化，有些不一致. 在RootSIFT论文中并没有指出需要进行l2归一化，但是在presentation, 却有l2归一化.
-    # 也有认为，显式地执行L2规范化是不需要的. 通过采用L1规范，然后是平方根，已经有L2标准化的特征向量，不需要进一步的标准
+    # Whether to perform l2 normalization is somewhat inconsistent. In the RootSIFT paper, it is not pointed out that l2 normalization is needed, but in presentation, l2 normalization is present.
+    # It is also believed that explicitly performing L2 normalization is not necessary. By adopting the L1 specification, followed by the square root, there are already L2 standardized eigenvectors, and no further standards are needed.
     if l2norm:
         #descs /= (np.linalg.norm(descs, axis=1, ord=2) + eps)
         descs = desc_l2norm(descs)
@@ -719,13 +719,14 @@ def filterMaxNumDesc(kp, MaxNum):
 
 def diou_nms(dets, scores, iou_thresh=None, beta=1.0):
     """DIOU non-maximum suppression.
-  diou = iou - 方框中心欧几里得距离的平方 / 最小包围方框对角线的平方
+  diou = iou - Square of Euclidean distance in the center of the box / Square of the smallest surrounding the diagonal of the box
   Reference: https://arxiv.org/pdf/1911.08287.pdf
   Args:
     dets: detection with shape (num, 4) and format [x1, y1, x2, y2].
     iou_thresh: IOU threshold,
-    参数β,用于控制对距离的惩罚程度.  当 β趋向于无穷大时，DIoU 退化为 IoU，此时的 DIoU-NMS 与标准 NMS 效果相当。
-                                当 β趋向于 0 时，此时几乎所有中心点与得分最大的框的中心点不重合的框都被保留了。
+    Parameter β is used to control the degree of punishment for distance. 
+            When β tends to infinity, DIoU degenerates into IoU, and the DIoU-NMS at this time is comparable to the standard NMS. 
+            When β tends to 0, almost all boxes that do not coincide with the center point of the box with the largest score are retained.
   Returns:
     numpy.array: Retained boxes.
   """
@@ -787,15 +788,15 @@ def process_diou_nms(keypoints, radius=None, iou_thresh=0.3):
         y1 = lambda center: center.pt[1] - center.size / 2
         x2 = lambda center: center.pt[0] + center.size / 2
         y2 = lambda center: center.pt[1] + center.size / 2
-    # 提取x,y坐標
+    # Extract x,y coordinates
     dets = np.array([[x1(k), y1(k), x2(k), y2(k)] for k in keypoints]).astype(np.float32)
-    # 篩選後的關鍵點，注意順序可能變了
+    # The key points after filtering, note that the order may change
     try:
         res = diou_nms(dets, scores, iou_thresh)  # , beta=1e5)
     except Exception as e:
-        raise Exception(f"nms遇到问题：{e}, {dets.shape}, {scores.shape}")
+        raise Exception(f"NMS has problems: {e}, {dets.shape}, {scores.shape}")
     indexes = []
-    # 匹配尋找篩選後的點在原來數組中的下標
+    # Match the point after searching for filtering in the original number
     for item in res:
         i = np.argwhere((dets[:, 0] == item[0]) & (dets[:, 1] == item[1]) & (dets[:, 2] == item[2]) & (dets[:, 3] == item[3]))
         if i.size: indexes.append(i[0][0])
@@ -806,7 +807,7 @@ def process_diou_nms(keypoints, radius=None, iou_thresh=0.3):
     return np.array(kpt_new)
 
 def gpu_warmup(cuda, num_warmup_steps=50):
-    """对 GPU 进行预热"""
+    """Preheat the GPU"""
     model = torchvision.models.resnet18()
     input_tensor = torch.randn(1, 3, 224, 224)
     model = model.to(cuda)
@@ -861,20 +862,20 @@ def sift_forward(data, device, copy=False):
         print('>> Keypoint Detection:', time.time() - t1)
         # k = process_diou_nms(k, gconfig["iou_borders"], gconfig["iou_thresh"])
         k = filterMaxNumDesc(k, gconfig["max_keypoints"])
-        # 对于不足数量的关键点，随机添加一些像素位置。
+        # For less than a certain number of key points, add some pixel positions randomly.
         if is_train and len(k) < gconfig["max_keypoints"]:
             print(f"Rare condition executed [{len(k)}/{gconfig['max_keypoints']}]")
             to_add_points = gconfig["max_keypoints"] - len(k)
-            # 从已有的关键点和描述符中随机选择一些进行复制
+            # Randomly select some from existing key points and descriptors to copy
             if copy:
                 selected_indices = np.random.choice(len(k), size=to_add_points, replace=True)
                 additional_k, additional_d = k[selected_indices], d[selected_indices]
-            # 随机选择一些坐标进行计算SIFT特征
+            # Randomly select some coordinates to calculate SIFT features
             else:
                 coordinates = np.random.random((to_add_points, 2)) * img.shape[1]
                 coordinates[:, 1] = np.random.random(to_add_points) * img.shape[0]
                 additional_k, additional_d = compute_sift_at_locations(sift, img, coordinates)
-            # 将选中的关键点和描述符添加到原始列表中
+            # Add selected key points and descriptors to the original list
             k = np.concatenate([k, additional_k]) if len(k)>0 else additional_k
         print('>> Number of Keypoints:', len(k))
         t1 = time.time()
