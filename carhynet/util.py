@@ -6,7 +6,7 @@ from tqdm import tqdm
 import random
 import json
 
-dist_th = 8e-3  # 阈值，小于此阈值的负描述符对将被视为false negatives
+dist_th = 8e-3  # Threshold, negative descriptor pairs less than this threshold will be considered false negatives
 eps_l2_norm = 1e-10
 eps_sqrt = 1e-6
 
@@ -148,20 +148,20 @@ def cal_index_train(index_unique_label, num_label_each_batch, num_img_each_label
 
     index_unique_label0 = index_unique_label.copy()
 
-    # 一次送入 (共num_img_each_label张图 * num_label_each_batch个点图/张图) 个batch数
+    # Input at one time (total num_img_each_label pictures * num_label_each_batch dot pictures/pictures) batch numbers
     sz_batch = num_img_each_label*num_label_each_batch
-    # 处理完总共需要 (共num_patch个图 ÷ sz_batch个图/次) 次
+    # A total of required needs after processing (num_patch pictures ÷ sz_batch pictures/time)
     num_batch_each_epoch = int(num_patch/sz_batch)
     for e_loop in range(epoch_max):
-        # 循环遍历每个epoch
+        # Loop through each epoch
         each_epoch_index = []
-        for b_loop in tqdm(range(num_batch_each_epoch), desc='calculating train index:epoch {} of {}'.format(e_loop,epoch_max)):#num_batch_each_epoch
-            # 循环遍历每个epoch中的每个batch
+        for b_loop in tqdm(range(num_batch_each_epoch), desc='calculating train index:epoch {} of {}'.format(e_loop,epoch_max)):  # num_batch_each_epoch
+            # Loop through each batch in each epoch
             each_batch_index = []
             for i in range(num_label_each_batch):
-                # 循环每个batch中的每个label
+                # Loop every label in each batch
                 if len(index_unique_label[i]) < num_img_each_label:
-                    # 如果小于num_img_each_label，则重新填充变量
+                    # If it is less than num_img_each_label, refill the variable
                     np.random.shuffle(index_unique_label0[i])
                     index_unique_label[i] = index_unique_label0[i]
                 for j in range(num_img_each_label):
@@ -175,9 +175,9 @@ def cal_index_train(index_unique_label, num_label_each_batch, num_img_each_label
                         index_unique_label[i] = np.delete(index_unique_label[i], [0])
 
             each_epoch_index.append(each_batch_index)
-            # 沿着给定轴滚动数组元素。超出最后位置的元素将会滚动到第一个位置。
-            # 将index_unique_label，沿着axis的方向，滚动-num_label_each_batch长度
-            # 默认情况下，即axis为None时，数组在移位之前会被变成扁平化，之后会恢复原始形状。
+            # Roll the array element along the given axis. Elements beyond the last position will scroll to the first position. 
+            # Scroll index_unique_label along the direction of axis and scroll -num_label_each_batch length 
+            # By default, when axis is None, the array will be flattened before shifting, and then it will return to the original shape.
             index_unique_label = np.roll(index_unique_label, -num_label_each_batch)
             index_unique_label0 = np.roll(index_unique_label0, -num_label_each_batch)
 
@@ -207,15 +207,15 @@ def load_UBC_for_train(data_root, train_set, sz_patch=32, nb_pt_each_batch=512, 
         del data
     else:
         print(train_set)
-        # 读取bmp图片，并存为npz文件，下次直接读取npz即可，返回的np.array
+        # Read the bmp image and store it as an npz file. Next time you just read npz directly, the returned np.array
         patch = read_UBC_patch_opencv(train_root, sz_patch, color=color)
-        # 读取图片对应的id，返回的np.array
+        # Read the corresponding id of the image and return np.array
         pointID = read_UBC_pointID(train_root)
         index_unique_ID = []  # it is a list
-        # 去除重复项
+        # Remove duplicates
         pointID_unique = np.unique(pointID)
         for id in pointID_unique:
-            # 筛选返回非0的数组元组的索引
+            # Filter the index of an array tuple that returns non-0
             index_unique_ID.append(np.argwhere(pointID == id).squeeze())
         np.savez(file_data_train, patch=patch, pointID=pointID, index_unique_ID=np.array(index_unique_ID, dtype=object))
     index_train = []
@@ -227,7 +227,7 @@ def load_UBC_for_train(data_root, train_set, sz_patch=32, nb_pt_each_batch=512, 
             if nb_pat_per_pt == -1:
                 index_train = cal_index_train_all(index_unique_ID, nb_pt_each_batch, epoch_max)
             else:
-                # 计算每个batch的下标
+                # Calculate the subscript of each batch
                 index_train = cal_index_train(index_unique_ID, nb_pt_each_batch, nb_pat_per_pt, epoch_max)
             np.save(file_index_train, index_train)
 
@@ -438,19 +438,19 @@ def data_aug(patch, num_ID_per_batch, color=True):
     patch = patch.numpy()
     for i in range(0, num_ID_per_batch):
         if random.random() > 0.5:
-            # 旋转
+            # Rotate
             nb_rot = np.random.randint(1, 4)
             patch[2*i] = np.rot90(patch[2*i], nb_rot)
             patch[2*i+1] = np.rot90(patch[2*i + 1], nb_rot)
 
 
         if random.random() > 0.5:
-            # 上下翻转
+            # Flip up and down
             patch[2 * i] = np.flipud(patch[2 * i])
             patch[2 * i + 1] = np.flipud(patch[2 * i + 1])
 
         #if random.random() > 0.5:
-        #    # 左右翻转
+        #    # Flip left and right
         #    patch[2 * i] = np.fliplr(patch[2*i])
         #    patch[2 * i + 1] = np.fliplr(patch[2*i + 1])
 
@@ -470,7 +470,7 @@ def cal_fpr95(desc,pointID,pair_index):
     dist_pos = dist[pairSim == 0]
     dist_neg = dist[pairSim != 0]
     dist_pos, indice = torch.sort(dist_pos)
-    # numel: 返回数组中元素的个数
+    # numel: Returns the number of elements in the array
     loc_thr = int(np.ceil(dist_pos.numel() * 0.95))
     thr = dist_pos[loc_thr]
     fpr95 = float(dist_neg.le(thr).sum())/dist_neg.numel()
