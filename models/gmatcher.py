@@ -221,8 +221,8 @@ class GMatcher(nn.Module):
         percentile = data.get('percentile', 7)
         min_size = data.get('min_size', 8)
         if data.get('delaunay', False):
-            # Delaunay构图
-            print("**Delaunay构图**")
+            # Delaunay method
+            print("**Delaunay method**")
             t1 = time.time()
             graph0 = build_graph_from_keypoints_Delaunay(data['keypoints0'], data['descriptors0'], data['scores0'], device=data['device'])
             print('>> Graph Construction 1:', time.time() - t1)
@@ -230,7 +230,7 @@ class GMatcher(nn.Module):
             graph1 = build_graph_from_keypoints_Delaunay(data['keypoints1'], data['descriptors1'], data['scores1'], device=data['device'])
             print('>> Graph Construction 2:', time.time() - t1)
         else:
-            # 动态阈值的方法
+            # Dynamic threshold method
             t1 = time.time()
             graph0, kept_kpts0_indices = build_optimize_graph_with_cosine_similarity(data['keypoints0'], data['descriptors0'], data['scores0'],
                                                                                      radius=radius, percentile=percentile, min_size=min_size,
@@ -308,9 +308,11 @@ class GMatcher(nn.Module):
 
     def forward_train(self, data):
         """
-        优化匹配问题的损失函数，通过Sinkhorn算法调整得分矩阵使其接近最优匹配，
-        然后根据真实的匹配情况计算正负匹配的损失，并通过配置的权重调整损失贡献，
-        以训练模型在给定的匹配任务上表现更好。
+        Optimize the loss function of the matching problem, adjust the score matrix through 
+        the Sinkhorn algorithm to make it close to the optimal match, and then calculate the 
+        loss of the positive and negative match based on the real match situation, and adjust 
+        the loss contribution through the configured weights to train the model to perform 
+        better on a given matching task.
         """
         graph0, graph1 = data['graph0'], data['graph1']
         batch_size = data['image0'].shape[0]
@@ -325,19 +327,19 @@ class GMatcher(nn.Module):
         desc1 = desc1 + self.kenc(kpts1, data['scores1'])
         desc0, desc1 = self.gnn(desc0, desc1)
         mdesc0, mdesc1 = self.final_proj(desc0), self.final_proj(desc1)
-        # 计算两个描述子之间的内积，生成一个bnm形状的张量，其中每个元素代表一对描述符之间的相似度或距离得分
+        # Calculate the inner product between two descriptors to generate a bnm-shaped tensor, where each element represents the similarity or distance score between a pair of descriptors
         scores = torch.einsum('bdn,bdm->bnm', mdesc0, mdesc1)
-        # 通过描述符维度的平方根对得分进行归一化
+        # Normalize the score by the square root of the descriptor dimension
         scores = scores / self.config['descriptor_dim']**.5
-        # 通过Sinkhorn算法优化得分矩阵scores，使用了对数空间下的最优传输方法
+        # Sinkhorn algorithm optimizes the score matrix scores, using the optimal transmission method in logarithmic space
         scores = log_optimal_transport(scores, self.bin_score, iters=self.config['sinkhorn_iterations'])
-        # gt_indexes是真实匹配对的索引
+        # gt_indexes is the index of the real match pair
         gt_indexes = data['matches']
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> #
-        # 构图时候删除了关键点，所以需要对剩余的关键点进行重映射。
+        # Key points are deleted when composing, so the remaining key points need to be remapped.
         kept_kpts0_indices = data['kept_kpts0_indices']
         kept_kpts1_indices = data['kept_kpts1_indices']
-        # Step 1: 构造 remap 字典（batch-wise）
+        # Step 1: Construct a remap dictionary (batch-wise)
         remap_dict_0 = [
             {orig_idx: new_idx for new_idx, orig_idx in enumerate(kept_kpts0_indices[b])}
             for b in range(len(kept_kpts0_indices))
@@ -346,39 +348,40 @@ class GMatcher(nn.Module):
             {orig_idx: new_idx for new_idx, orig_idx in enumerate(kept_kpts1_indices[b])}
             for b in range(len(kept_kpts1_indices))
         ]
-        # Step 2: 构造有效索引行 + 索引重映射
+        # Step 2: Construct valid index row + index remapping
         gt_new_indexes = []
         for i in range(len(gt_indexes)):
             b, i0, i1 = gt_indexes[i].tolist()
-            # 先保留 -1 表示负样本
+            # Keep -1 first to indicate negative samples
             if i0 == -1 or i1 == -1:
                 gt_new_indexes.append([b, -1, -1])
             else:
-                # 如果该点在保留索引中，则映射新索引；否则标为 -1（即无效）
+                # If the point is in the reserved index, the new index is mapped; otherwise it is marked as -1 (i.e. invalid)
                 if (i0 in remap_dict_0[b]) and (i1 in remap_dict_1[b]):
                     new_i0 = remap_dict_0[b][i0]
                     new_i1 = remap_dict_1[b][i1]
                     gt_new_indexes.append([b, new_i0, new_i1])
                 else:
                     gt_new_indexes.append([b, -1, -1])
-        # Step 3: 转为 tensor
+        # Step 3: Convert to tensor
         gt_indexes = torch.tensor(gt_new_indexes, dtype=torch.long, device=gt_indexes.device)
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< #
-        # neg_flag标记了哪些匹配对是负匹配（即不匹配的对），通过检查gt_indexes中的值是否为-1来确定
+        # neg_flag marks which match pairs are negative (i.e., mismatched pairs), determine by checking whether the value in gt_indexes is -1
         neg_flag = (gt_indexes[:, 1] == -1) | (gt_indexes[:, 2] == -1)
-        # 计算每个真实匹配对在优化后的得分矩阵中对应的得分
+        # Calculate the corresponding scores of each true match pair in the optimized score matrix
         loss_pre_components = scores[gt_indexes[:, 0], gt_indexes[:, 1], gt_indexes[:, 2]]
-        # 对loss_pre_components进行裁剪（Clamping），限制其值在-100到0之间，以避免梯度爆炸或数值不稳定
+        # Clamping loss_pre_components, limiting their values ​​between -100 and 0 to avoid gradient explosion or numerical instability
         loss_pre_components = torch.clamp(loss_pre_components, min=-100, max=0.0)
-        # 将裁剪后的得分取反，以便于计算损失（在匹配问题中，较高的得分表示较好的匹配，因此损失是得分的负值）
+        # Inverse the cropped scores to facilitate calculation of the loss (in the matching problem, higher scores indicate better matches, so the loss is a negative value of the score)
         loss_vector = -1 * loss_pre_components
-        # 根据neg_flag区分正匹配和负匹配，pos_index和neg_index分别为正匹配和负匹配的索引
+        # According to neg_flag, pos_index and neg_index are indexes of positive and negative matches, respectively.
         neg_index, pos_index = gt_indexes[:, 0][neg_flag], gt_indexes[:, 0][~neg_flag]
-        # 分别计算正匹配和负匹配损失的平均值
+        # Calculate the average of positive and negative match losses, respectively
         batched_pos_loss, batched_neg_loss = ts.scatter_mean(loss_vector[~neg_flag], pos_index, dim_size=batch_size), ts.scatter_mean(loss_vector[neg_flag], neg_index, dim_size=batch_size)
-        # pos_loss和neg_loss分别乘以配置中定义的权重self.config['pos_loss_weight']和self.config['neg_loss_weight']，以调整正匹配和负匹配在总损失中的贡献
+        # pos_loss and neg_loss are multiplied by the weights defined in the configuration, self.config['pos_loss_weight'] and self.config['neg_loss_weight'], respectively, 
+        # to adjust the contribution of positive and negative matches to the total loss
         pos_loss, neg_loss = self.config['pos_loss_weight']*batched_pos_loss.mean(), self.config['neg_loss_weight']*batched_neg_loss.mean()
-        # 总损失loss是正匹配损失pos_loss和负匹配损失neg_loss的和
+        # Total loss is the sum of positive matching loss pos_loss and negative matching loss neg_loss
         loss = pos_loss + neg_loss
         return loss, pos_loss, neg_loss
 
