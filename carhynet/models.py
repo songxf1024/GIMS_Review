@@ -1,11 +1,4 @@
-# -*- coding: utf-8 -*-
-# @Time    : 2022/1/16 下午2:21
-# @Author  : 小锋学长生活大爆炸
-# @FileName: model_store_sxf.py
-# @Software: PyCharm
-# @Blog    : https://blog.csdn.net/sxf1061700625
 import math
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -57,31 +50,31 @@ class FRN(nn.Module):
             nn.init.constant_(self.eps, self.init_eps)
 
     def extra_repr(self):
-        '''打印模块的自定义的额外信息，'''
+        '''Additional information about customization of the printing module'''
         return 'num_features={num_features}, eps={init_eps}'.format(**self.__dict__)
 
     def forward(self, x):
         # Compute the mean norm of activations per channel.
-        # 计算每个通道的激活的平均值
-        # FRN的操作是(H, W)维度上的，即对每个样例的每个channel单独进行归一化，
-        # 这里 x 就是一个N维度（HxW）的向量，所以FRN没有BN层对batch依赖的问题。
-        # BN层采用归一化方法是减去均值然后除以标准差，而FRN却不同，这里没有减去均值操作，
-        # 公式中的 v^2是x 的二次范数的平均值。
-        # 这种归一化方式类似BN可以用来消除中间操作（卷积和非线性激活）带来的尺度问题，有助于模型训练。
+        # Calculate the average of activations of each channel 
+        # The operation of FRN is in the (H, W) dimension, that is, each channel of each sample is normalized separately. 
+        # Here x is a vector of N-dimensional (HxW), so FRN does not have the problem of BN layer dependence on batch. 
+        # The normalization method of the BN layer is to subtract the mean and divide by the standard deviation, while the FRN is different. There is no subtracting the mean operation here. 
+        # v^2 in the formula is the average of the quadratic norm of x. 
+        # This normalization method is similar to that of BN that can be used to eliminate the scale problems caused by intermediate operations (convolution and nonlinear activation), which helps model training.
         nu2 = x.pow(2).mean(dim=[2, 3], keepdim=True)
 
         # Perform FRN.
-        # 公式里的epsilon是一个很小的正常量，以防止除0。
-        # FRN是在H,W两个维度上归一化，一般情况下网络的特征图大小N=HxW较大，
-        # 但是有时候可能会出现1x1的情况，比如InceptionV3和VGG网络，此时epsilon就比较关键。
-        # 当epsilon值较小时，归一化相当于一个符号函数（sign function），这时候梯度几乎为0，严重影响模型训练；
-        # 当值较大时，曲线变得更圆滑，此时的梯度利于模型学习。
-        # 对于这种情况，论文建议采用一个可学习的epsilon。
-        # 对于不含有1x1特征的模型，论文中采用的是一个常量值1e-6。
+        # The epsilon in the formula is a very small normal quantity to prevent dividing 0. 
+        # FRN is normalized in the two dimensions of H and W. Generally speaking, the network's feature map size N=HxW is larger, 
+        # However, sometimes 1x1 may occur, such as InceptionV3 and VGG networks, and epsilon is more critical at this time. 
+        # When the epsilon value is small, normalization is equivalent to a sign function. At this time, the gradient is almost 0, which seriously affects model training; 
+        # When the value is large, the curve becomes smoother, and the gradient at this time is conducive to model learning. 
+        # For this case, the paper recommends using a learnable epsilon. 
+        # For models that do not contain 1x1 features, a constant value of 1e-6 is used in the paper.
         x = x * torch.rsqrt(nu2 + self.eps.abs())
 
         # Scale and Bias
-        # 归一化之后同样需要进行缩放和平移变换，这里的gamma和beta也是可学习的参数（参数大小为C）
+        # After normalization, scaling and translation transformation are also required. Here, gamma and beta are also learnable parameters (parameter size is C)
         if self.is_scale:
             x = self.weight * x
         if self.is_bias:
@@ -92,10 +85,10 @@ class TLU(nn.Module):
     def __init__(self, num_features):
         """
         TLU layer as in the paper
-        FRN缺少去均值的操作，这可能使得归一化的结果任意地偏移0，
-        如果FRN之后是ReLU激活层，可能产生很多0值，这对于模型训练和性能是不利的。
-        为了解决这个问题，FRN之后采用的阈值化的ReLU，即TLU。
-        这里的tau是一个可学习的参数。论文中发现FRN之后采用TLU对于提升性能是至关重要的。
+        FRN lacks a de-meaning operation, which may cause the normalization to shift arbitrarily by 0. 
+        If the FRN is followed by the ReLU activation layer, many 0 values ​​may be generated, which is detrimental to model training and performance. 
+        To solve this problem, the thresholded ReLU, namely, TLU, is adopted after FRN. Here tau is a learnable parameter. 
+        The paper found that the use of TLU after FRN is crucial to improve performance.
         Filter Response Normalization Layer: Eliminating Batch Dependence in the Training of Deep Neural Networks'
         <https://arxiv.org/abs/1911.09737>
         """
@@ -189,13 +182,10 @@ class ConvBNReLU(nn.Sequential):
 class SandGlass(nn.Module):
     def __init__(self, inp, oup, stride, expand_ratio, identity_tensor_multiplier=1.0, norm_layer=None, keep_3x3=False):
         """
-        x: 输入张量
-        oup: 输出通道数
-        stride: 步长
-        expand_ratio: 扩张系数
-        identity_tensor_multiplier: 区间在0-1的浮点数，用于部分通道残差连接，
-                                    默认为1，即原始残差连接
-        norm_layer: 若为False则不做BN，为True则过一层BN
+        x: Input tensor oup: Output channel number 
+        stride: Step size expand_ratio: Expansion coefficient 
+        identity_tensor_multiplier: Floating point number with intervals of 0-1, used for partial channel residual connections, default is 1, that is, the original residual connection 
+        norm_layer: If False, no BN is used, and if True, a layer of BN is passed
         """
         super(SandGlass, self).__init__()
         self.stride = stride
@@ -250,8 +240,8 @@ class SandGlass(nn.Module):
 class BaseOriSingle8Net(nn.Module):
     def input_norm(self, x):
         std, mean = torch.std_mean(x, dim=(2, 3), keepdim=True)
-        # WARNING: 我们需要.detach()输入，否则带有F.grid_sample的patches extractor
-        # 产生的gradient是非常有噪声的，使得检测器训练完全不稳定。
+        # WARNING: We need the .detach() input, otherwise the gradient generated by patches extractor 
+        # with F.grid_sample is very noisy, making detector training completely unstable.
         return (x - mean.detach()) / (std.detach() + 1e-7)
 
     def weights_init(self, m):
@@ -289,8 +279,8 @@ class BaseOriMultiNet(nn.Module):
 class BaseResNet(nn.Module):
     def input_norm(self, x):
         std, mean = torch.std_mean(x, dim=(2, 3), keepdim=True)
-        # WARNING: 我们需要.detach()输入，否则带有F.grid_sample的patches extractor
-        # 产生的gradient是非常有噪声的，使得检测器训练完全不稳定。
+        # WARNING: We need the .detach() input, otherwise the gradient generated by patches extractor 
+        # with F.grid_sample is very noisy, making detector training completely unstable.
         return (x - mean.detach()) / (std.detach() + 1e-7)
 
     def weights_init(self, m):
@@ -374,8 +364,8 @@ class CAR_HyNet(nn.Module):
 
     def input_norm(self, x):
         std, mean = torch.std_mean(x, dim=(2, 3), keepdim=True)
-        # WARNING: 我们需要.detach()输入，否则带有F.grid_sample的patches extractor
-        # 产生的gradient是非常有噪声的，使得检测器训练完全不稳定。
+        # WARNING: We need the .detach() input, otherwise the gradient generated by patches extractor 
+        # with F.grid_sample is very noisy, making detector training completely unstable.
         return (x - mean.detach()) / (std.detach() + 1e-7)
 
     def weights_init(self, m):
@@ -579,7 +569,7 @@ class Loss_HyNet():
         dist_neg_hard, index_neg_hard = torch.sort(dist_neg, dim=0)
         dist_neg_hard = dist_neg_hard[0, :]
         # scipy.io.savemat('dist.mat', dict(dist_pos=dist_pos.cpu().detach().numpy(), dist_neg=dist_neg_hard.cpu().detach().numpy()))
-        # 限定数据范围
+        # Limited data range
         loss_triplet = torch.clamp(self.margin + (dist_pos + dist_pos.pow(2)/2*self.alpha) - (dist_neg_hard + dist_neg_hard.pow(2)/2*self.alpha), min=0.0)
         self.num_triplet_display = loss_triplet.gt(0).sum()
         self.loss = self.loss + loss_triplet.sum()
@@ -624,7 +614,7 @@ class Loss_HyNet():
 
     def compute(self, desc_L, desc_R, desc_raw_L, desc_raw_R):
         # num_pt_current_batch = desc_L.size(0)
-        # # 动态创建掩码
+        # # Dynamically create masks
         # diagonal = torch.eye(num_pt_current_batch, device=self.device)
         # self.mask_pos_pair = diagonal.eq(1).float()
         # self.mask_neg_pair = diagonal.eq(0).float()
