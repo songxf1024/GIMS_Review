@@ -7,6 +7,9 @@ import dash
 from dash import dcc, html, Input, Output, State, ctx
 import glob
 from dash.dependencies import ALL
+from dash.exceptions import PreventUpdate
+
+
 # === Default Parameter Settings ===
 default_r, default_t, default_m = 15, 2, 7
 
@@ -17,6 +20,7 @@ default_df.columns = ["r", "t", "m", "correct_matches", "total_matches", "time"]
 r_values = sorted(default_df["r"].unique())
 t_values = sorted(default_df["t"].unique())
 m_values = sorted(default_df["m"].unique())
+correct_password = "123"
 
 # === Initialize Dash App ===
 app = dash.Dash(
@@ -27,6 +31,28 @@ app = dash.Dash(
 
 # === Layout ===
 app.layout = html.Div([
+    dcc.Store(id="auth-status", data=False),
+    html.Div(id="auth-container")
+])
+
+MAIN_CONTENT = html.Div([
+    dcc.Store(id="loading-flag", data=False),
+    html.Div(id="loading-message", style={
+        "position": "fixed",
+        "top": "10px",
+        "left": "50%",
+        "transform": "translateX(-50%)",
+        "backgroundColor": "#fffae6",
+        "border": "1px solid #ffe58f",
+        "padding": "10px 20px",
+        "borderRadius": "6px",
+        "boxShadow": "0 2px 6px rgba(0,0,0,0.1)",
+        "display": "none",
+        "zIndex": 10000,
+        "fontSize": "16px",
+        "color": "#ad8b00"
+    }),
+
     html.H1("GIMS Parameter Analysis Dashboard", style={
         "textAlign": "center",
         "margin": "30px auto 20px auto",
@@ -280,6 +306,45 @@ app.layout = html.Div([
 
 # === Callbacks ===
 @app.callback(
+    Output("auth-container", "children"),
+    Input("auth-status", "data")
+)
+def render_content(authenticated):
+    if not authenticated:
+        return html.Div([
+            html.H2("🔐 Access Restricted", style={"textAlign": "center", "marginTop": "60px"}),
+            html.Div([
+                "Please enter the password to access the dashboard. Hint: The password is ",
+                html.Span("123", style={"color": "red", "fontWeight": "bold"})
+            ], style={"textAlign": "center", "marginBottom": "20px", "color": "#888"}),
+            dcc.Input(id="password-input", type="password", placeholder="Enter password here...",
+                      style={"margin": "auto", "display": "block", "padding": "10px", "fontSize": "16px",
+                             "width": "300px", "border": "1px solid #ccc", "borderRadius": "6px"}),
+            html.Button("Submit", id="submit-password", n_clicks=0,
+                        style={"display": "block", "margin": "20px auto", "padding": "10px 20px",
+                               "fontSize": "16px", "borderRadius": "6px", "backgroundColor": "#007BFF",
+                               "color": "white", "border": "none", "cursor": "pointer"}),
+            html.Div(id="password-feedback", style={"textAlign": "center", "color": "red", "marginTop": "10px"})
+        ])
+    else:
+        # 返回主页面 layout 内容（你已有的主页面布局）
+        return MAIN_CONTENT
+
+
+@app.callback(
+    Output("auth-status", "data"),
+    Output("password-feedback", "children"),
+    Input("submit-password", "n_clicks"),
+    State("password-input", "value"),
+    prevent_initial_call=True
+)
+def check_password(n_clicks, input_password):
+    if input_password == correct_password:
+        return True, ""
+    return False, "❌ Incorrect password. Please try again."
+
+
+@app.callback(
     Output("data-store", "data"),
     Output("filename-display", "children"),
     Output("image-preview", "children"),
@@ -290,7 +355,6 @@ app.layout = html.Div([
 )
 def load_data(upload_contents, upload_filename, dropdown_filename):
     triggered_id = ctx.triggered_id
-    image_output = None
     if triggered_id == "upload-data" and upload_contents is not None:
         content_type, content_string = upload_contents.split(',')
         decoded = base64.b64decode(content_string)
@@ -303,7 +367,8 @@ def load_data(upload_contents, upload_filename, dropdown_filename):
         # 查找图片（jpg/png）
         folder = os.path.dirname(filepath)
         image_html = []
-        for ext in ("*.jpg", "*.JPG", "*.png", "*.PNG", "*.bmp"):  # in windows: ("*.jpg", "*.png", "*.bmp")
+        image_output = None
+        for ext in ("*.jpg", "*.png", "*.bmp"):
             for image_path in sorted(glob.glob(os.path.join(folder, ext))):
                 encoded = base64.b64encode(open(image_path, "rb").read()).decode()
                 img_tag = html.Img(
@@ -344,7 +409,7 @@ def load_data(upload_contents, upload_filename, dropdown_filename):
                             "backgroundColor": "#fdfdfd"
                         }) if image_html else None
     else:
-        return dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, None
     df.columns = ["r", "t", "m", "correct_matches", "total_matches", "time"]
     display_name = f"✅ Current file: {filename}"
     return df.to_json(date_format='iso', orient='split'), f"✅ Current file: {filename}", image_output
@@ -406,13 +471,51 @@ def display_modal(image_src):
 )
 def close_modal(n):
     return None
+
+@app.callback(
+    Output("loading-message", "children"),
+    Output("loading-message", "style"),
+    Input("loading-flag", "data")
+)
+def display_loading_message(is_loading):
+    style_base = {
+        "position": "fixed",
+        "top": "10px",
+        "left": "50%",
+        "transform": "translateX(-50%)",
+        "backgroundColor": "#fffae6",
+        "border": "1px solid #ffe58f",
+        "padding": "10px 20px",
+        "borderRadius": "6px",
+        "boxShadow": "0 2px 6px rgba(0,0,0,0.1)",
+        "zIndex": 10000,
+        "fontSize": "16px",
+        "color": "#ad8b00"
+    }
+    if is_loading:
+        return "⏳ Loading data and rendering visualizations...", {**style_base, "display": "block"}
+    return "", {**style_base, "display": "none"}
+
+@app.callback(
+    Output("loading-flag", "data"),
+    Input("file-dropdown", "value"),
+    prevent_initial_call=True
+)
+def flag_loading_on_dropdown_change(file_value):
+    if file_value:
+        return True
+    return dash.no_update
+
+
 # ----------------------------------------------------------- #
 
 @app.callback(
     Output("heatmap-correct", "figure"),
     Output("heatmap-time", "figure"),
+    Output("loading-flag", "data", allow_duplicate=True),
     Input("r-slider", "value"),
-    Input("data-store", "data")
+    Input("data-store", "data"),
+    prevent_initial_call=True
 )
 def update_r(r_val, data):
     df = pd.read_json(io.StringIO(data), orient='split')
@@ -434,7 +537,7 @@ def update_r(r_val, data):
         fig.add_vline(x=default_m, line_dash="dash", line_color="red", line_width=2)
         fig.add_hline(y=default_t, line_dash="dash", line_color="red", line_width=2)
         figs.append(fig)
-    return figs[0], figs[1]
+    return figs[0], figs[1], False
 
 @app.callback(
     Output("heatmap-rm-correct", "figure"),
@@ -705,4 +808,4 @@ def update_slider_ranges(data_json):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="0.0.0.0", port=8050, debug=True)
