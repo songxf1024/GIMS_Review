@@ -268,25 +268,7 @@ def GIMS(dgims=False):
     send_notify('Done：'+args.output_dir)
 
 if __name__ == '__main__':
+    # python eval_homography.py --input_homography assets/coco_test_images_homo.txt --input_dir assets/coco_test_images --weights_path ./weights/minloss.pt --name=gims
     set_seed(42)
     GIMS(dgims=False)
-
-
-'''
----------------------------------------------------------------------------------------------------------------------
-示例图片:
-    dataset="--input_homography assets/coco_test_images_homo.txt --input_dir assets/coco_test_images"
-    dataset="--input_homography assets/outdoor_test_images_homo.txt --input_dir assets/outdoor_test_images"
-    dataset="--input_homography assets/indoor_test_images_homo.txt --input_dir assets/indoor_test_images"
-全部RGB-D:
-    dataset="--input_homography mydatasets/outdoor_500_images.txt --input_dir mydatasets/outdoor_500_images/input"
-    dataset="--input_homography mydatasets/indoor_503_images.txt --input_dir mydatasets/indoor_503_images/input"
-1000张coco:
-    dataset="--input_homography mydatasets/coco_1000_images.txt --input_dir mydatasets/coco_1000_images/input"
-
-自建数据集:
-    dataset="--input_homography mydatasets/coco_5000_images.txt --input_dir mydatasets/coco_5000_images/input"
----------------------------------------------------------------------------------------------------------------------
-python eval_homography.py ${dataset} --weights_path ./weights/minloss.pt --name=gims
-'''
 
