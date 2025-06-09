@@ -27,19 +27,19 @@ def draw_homography_boxes_ext(
         font_color=(0, 255, 0)
 ):
     """
-    在 result_image 的右半边（image1）上绘制：
-    - 蓝色边框（GT homography）
-    - 红色边框（RANSAC估计）
-    - 可选误差注释文字（如 error_ransac）
+    Draw on the right half of result_image (image1):
+    - Blue border (GT homoography)
+    - Red border (RANSAC estimate)
+    - Optional error comment text (such as error_ransac)
 
-    参数:
-        result_image: draw_matches() 输出的图像
-        w0: image0 的宽度，用于定位右图起点
+    parameter:
+        result_image: The output image
+        w0: The width of image0 is used to locate the starting point of the right image
         homo_gt: Ground Truth Homography (3x3)
         homo_est: Estimated Homography (3x3)
-        error_text: 可选文字，如 "error: 2.34"
-    返回:
-        带注释和边框的图像
+        error_text: Optional text, such as "error: 2.34"
+    return:
+        Images with comments and borders
     """
     try:
         h, w = result_image.shape[:2]
@@ -59,33 +59,33 @@ def draw_homography_boxes_ext(
             est_box = cv2.perspectiveTransform(corners, homo_est) + np.array([[[w0, 0]]], dtype=np.float32)
             est_box = est_box.astype(np.int32)
             cv2.polylines(result_image, [est_box], isClosed=True, color=box_color_est, thickness=thickness)
-        # 添加误差文字
+        # Add error text
         if error_text is not None:
-            position = (w0 + 10, 30)  # 在右图左上角偏右一点
+            position = (w0 + 10, 30)  # On the upper left corner of the picture right
             cv2.putText(result_image, error_text, position, cv2.FONT_HERSHEY_SIMPLEX,
                         font_scale, font_color, thickness=2, lineType=cv2.LINE_AA)
     except Exception as e:
-        print(f"[Error] 在 result_image 上绘制边框或注释失败: {e}")
+        print(f"[Error] Drawing borders or comments on result_image failed: {e}")
     return result_image
 
 def draw_matches(img1, img2, matched_points1, matched_points2):
     def ensure_color(img):
-        """确保图像是三通道的彩色图像。如果是灰度图，转换为彩色图像。"""
-        if len(img.shape) == 2: img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)  # 转换为BGR彩色图像
+        """Make sure the image is a three-channel color image. If it is a grayscale image, convert it to a color image."""
+        if len(img.shape) == 2: img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)  # Convert to BGR color image
         return img
 
     img1 = ensure_color(img1)
     img2 = ensure_color(img2)
-    # 创建一个新图像，宽度为两幅图像宽度之和，高度为两者之间的最大值
+    # Create a new image with a width of the sum of the widths of the two images and a height of the maximum between them
     h1, w1 = img1.shape[:2]
     h2, w2 = img2.shape[:2]
     new_image = np.zeros((max(h1, h2), w1 + w2, 3), dtype='uint8')
 
-    # 将两幅图像放置在新图像上
+    # Place two images on a new image
     new_image[:h1, :w1] = img1
     new_image[:h2, w1:w1 + w2] = img2
 
-    # 对每对匹配的关键点，在新图像上画线
+    # Draw lines on the new image for each pair of matching key points
     for p1, p2 in zip(matched_points1, matched_points2):
         start_point = (int(p1[0]), int(p1[1]))
         end_point = (int(p2[0] + w1), int(p2[1]))
@@ -93,7 +93,7 @@ def draw_matches(img1, img2, matched_points1, matched_points2):
         cv2.circle(new_image, start_point, 2, (0, 255, 0), -1)
         cv2.circle(new_image, end_point, 2, (255, 0, 0), -1)
 
-    # 在左上角显示带有白色背景的黑色文字匹配数量
+    # Show the number of black text matches with white background in the upper left corner
     matches_count = len(matched_points1)
     text = f"Matches: {matches_count}"
     (text_width, text_height), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
@@ -198,7 +198,7 @@ def GIMS(dgims=False):
             # cv2.waitKey(1)
             cv2.imwrite(str(result_match_path / image_name), result_image)
         except Exception:
-            print(">> 匹配的点数太少，跳过")
+            print(">> Too few points matched, skip")
             results_file.append(f"{image_name} => 0")
             cv2.imwrite(str(result_match_path / image_name), draw_matches(image0, image1, [], []))
             continue
@@ -265,7 +265,7 @@ def GIMS(dgims=False):
     print('AUC@5\t AUC@10\t AUC@25\t Prec\t Recall\t')
     print('{:.2f}\t {:.2f}\t {:.2f}\t {:.2f}\t {:.2f}\t'.format(aucs_ransac[0], aucs_ransac[1], aucs_ransac[2], prec, rec))
     with open(result_name, 'w+') as f: f.write('\n'.join(results_file))
-    send_notify('已完成：'+args.output_dir)
+    send_notify('Done：'+args.output_dir)
 
 if __name__ == '__main__':
     set_seed(42)
