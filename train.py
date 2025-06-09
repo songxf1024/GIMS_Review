@@ -203,7 +203,7 @@ def process_wrapper(rank, config, args, func):
         print(f"GPU {rank}: {device_name}")
     else:
         device = torch.device('cpu')
-        print(f"使用CPU")
+        print(f"use CPU")
 
     func(config, args, rank if args.nprocs>1 else -1, device, args.nprocs>1)
 
