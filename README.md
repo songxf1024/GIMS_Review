@@ -22,7 +22,7 @@ gims/                     # Source code for GIMS framework
 ```
 
 > - The weights of GIMS and CAR-HyNet can be downloaded at [Google Drive](https://kutt.it/gims)  
-> - Online GIMS Parameter Analysis Dashboard: [http://14.103.144.178/](http://14.103.144.178/)
+> - Online GIMS Parameter Analysis Dashboard: [http://14.103.144.178:8050/](http://14.103.144.178:8050/)
 
 ## Setup
 ### Environment
