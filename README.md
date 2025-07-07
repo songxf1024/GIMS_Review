@@ -21,7 +21,8 @@ gims/                     # Source code for GIMS framework
 └── requirements.txt      # Python dependencies
 ```
 
-> The weights of GIMS and CAR-HyNet can be downloaded at [Google Drive](https://kutt.it/gims)
+> - The weights of GIMS and CAR-HyNet can be downloaded at [Google Drive](https://kutt.it/gims)  
+> - Online GIMS Parameter Analysis Dashboard: [http://14.103.144.178/](http://14.103.144.178/)
 
 ## Setup
 ### Environment
