@@ -22,7 +22,7 @@ gims/                     # Source code for GIMS framework
 ```
 
 > - The weights of GIMS and CAR-HyNet can be downloaded at [Google Drive](https://kutt.it/gims)  
-> - Online GIMS Parameter Analysis Dashboard: [http://14.103.144.178:8050/](http://14.103.144.178:8050/)
+> - Online GIMS Parameter Analysis Dashboard: [https://gims.xfxuezhang.cn/](https://gims.xfxuezhang.cn/) or [http://14.103.144.178/](http://14.103.144.178/)
 
 ## Setup
 ### Environment
@@ -163,5 +163,5 @@ Loaded GMatcher model ("./weights/gims_minloss_L.pt" weights)
 
 
 ## License
-Copyright (c) 2023 xianfeng song. All rights reserved.
+Copyright (c) 2025 xxx. All rights reserved.
 Licensed under the MIT License.
