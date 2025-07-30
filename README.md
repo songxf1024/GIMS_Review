@@ -163,5 +163,9 @@ Loaded GMatcher model ("./weights/gims_minloss_L.pt" weights)
 
 
 ## License
-Copyright (c) 2025 xxx. All rights reserved.
+Copyright (c) 2025 xxx. All rights reserved.  
 Licensed under the MIT License.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=songxf1024/GIMS&type=Date)](https://www.star-history.com/#songxf1024/GIMS&Date)
